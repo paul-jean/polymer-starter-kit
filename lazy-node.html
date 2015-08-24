@@ -53,15 +53,7 @@ href="http://www.polymer-project.org/1.0/samples/components/polymer/polymer.html
         },
 
         handleClick: function (e) {
-            console.log('LazyNode ' + this.nodeLabel + ' clicked!');
-            console.log('#' + this.lazyNodeID + ':');
-            console.log(this.$$('#' + this.lazyNodeID));
-            console.log("this = ");
-            console.log(this);
-            console.log('e = ');
-            console.log(e);
-            console.log('this.treePath =');
-            console.log(this.treePath);
+            e.stopPropagation();
             var childLevel = this.level + 1;
             var childPaths = this.loadChildren(this.treePath);
             for (var i = 0; i < childPaths.length; i++) {
