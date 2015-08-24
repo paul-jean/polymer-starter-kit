@@ -1,0 +1,47 @@
+<link rel="import"
+href="http://www.polymer-project.org/1.0/samples/components/polymer/polymer.html">
+
+<dom-module id="lazy-tree">
+
+    <template>
+        <div><p>hello world</p></div>
+        <content></content>
+    </template>
+
+
+</dom-module>
+
+<script>
+
+    Polymer({
+        is: "lazy-tree",
+
+        created: function() {
+            //console.log(this.localName + '#' + this.id + ' was created');
+        },
+
+        ready: function() {
+            // constructor stuff
+            this.nodeLabel = "root, 0";
+            //this.node = new LazyNode(this.nodeLabel);
+            //Polymer.dom(this.root).appendChild(this.node);
+            //console.log("this.nodeLabel = " + this.nodeLabel);
+        },
+
+        attached: function() {
+            //console.log(this.localName + '#' + this.id + ' was attached');
+        },
+
+        detached: function() {
+            //console.log(this.localName + '#' + this.id + ' was detached');
+        },
+
+        attributeChanged: function(name, type) {
+            //console.log(this.localName + '#' + this.id + ' attribute ' + name +
+            //  ' was changed to ' + this.getAttribute(name));
+        }
+    });
+
+
+
+</script>
