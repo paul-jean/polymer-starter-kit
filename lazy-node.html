@@ -6,7 +6,7 @@ href="http://www.polymer-project.org/1.0/samples/components/polymer/polymer.html
     <template>
         <li>
             <p>{{nodeLabel}}</p>
-            <ul id='foo'></ul>
+            <ul id='{{lazyNodeID}}'></ul>
         </li>
     </template>
 
@@ -34,6 +34,10 @@ href="http://www.polymer-project.org/1.0/samples/components/polymer/polymer.html
             childLazyNodes: {
                 type: Object,
                 value: []
+            },
+            lazyNodeID: {
+                type: String,
+                value: 'root'
             }
         },
 
@@ -41,6 +45,7 @@ href="http://www.polymer-project.org/1.0/samples/components/polymer/polymer.html
             this.level = level;
             this.treePath = treePath;
             this.nodeLabel = this.getNodeLabel(this.treePath);
+            this.lazyNodeID = this.arrayToLabelString(this.treePath, '-');
         },
 
         listeners: {
@@ -49,23 +54,32 @@ href="http://www.polymer-project.org/1.0/samples/components/polymer/polymer.html
 
         handleClick: function (e) {
             console.log('LazyNode ' + this.nodeLabel + ' clicked!');
-            console.log('this.$.foo =');
-            console.log(this.$.foo);
+            console.log('#' + this.lazyNodeID + ':');
+            console.log(this.$$('#' + this.lazyNodeID));
+            console.log("this = ");
+            console.log(this);
+            console.log('e = ');
+            console.log(e);
+            console.log('this.treePath =');
+            console.log(this.treePath);
             var childLevel = this.level + 1;
             var childPaths = this.loadChildren(this.treePath);
-            childPaths.forEach(function(childPath) {
-                this.childLazyNodes.push(new LazyNode(childLevel, childPath));
-            }.bind(this));
-            this.childLazyNodes.forEach(function(child) {
-                this.$$('#foo').appendChild(child);
-            }.bind(this));
+            for (var i = 0; i < childPaths.length; i++) {
+                var childPath = childPaths[i];
+                var child = new LazyNode(childLevel, childPath);
+                this.childLazyNodes.push(child);
+                var thisID = this.arrayToLabelString(this.treePath, '-');
+                this.$$('#' + thisID).appendChild(child);
+            }
         },
 
-        arrayToLabelString: function(a) {
+        arrayToLabelString: function(array, separator) {
+            separator = separator || ', ';
             var labelStr = '';
-            a.forEach(function(e, i) {
+            var len = array.length;
+            array.forEach(function(e, i) {
                 labelStr += e;
-                if (i < a.length - 1) labelStr += ', ';
+                if (i < len - 1) labelStr += separator;
             });
             return labelStr;
         },
