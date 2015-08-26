@@ -4,7 +4,6 @@ href="http://www.polymer-project.org/1.0/samples/components/polymer/polymer.html
 <dom-module id="lazy-tree">
 
     <template>
-        <div><p>hello world</p></div>
         <content></content>
     </template>
 
@@ -16,16 +15,170 @@ href="http://www.polymer-project.org/1.0/samples/components/polymer/polymer.html
     Polymer({
         is: "lazy-tree",
 
+        properties: {
+            scrollPosition: {
+                type: Number,
+                value: 0
+            },
+            nodeTreeState: {
+                type: Object,
+                value: {}
+            },
+            sequentialNodesA: {
+                type: Object,
+                value: []
+            },
+            spacerHeights: {
+                type: Object,
+                value: []
+            }
+        },
+
         created: function() {
             //console.log(this.localName + '#' + this.id + ' was created');
         },
 
         ready: function() {
-            // constructor stuff
-            this.nodeLabel = "root, 0";
-            //this.node = new LazyNode(this.nodeLabel);
-            //Polymer.dom(this.root).appendChild(this.node);
-            //console.log("this.nodeLabel = " + this.nodeLabel);
+            window.addEventListener('scroll', this.handleScroll.bind(this));
+            // initialize node tree state
+            this.nodeTreeState = {
+                'root': {
+                    children: {},
+                    deployed: true,
+                    label: 'root',
+                    occluded: false,
+                    position: 0
+                }
+            };
+            // initialize sequential node state
+            this.sequentialNodesA = ['root'];
+            this.spacerHeights = [0, 0];
+        },
+
+        /**
+         * getScrollPosition(): return the current vertical scroll position
+         * of the window.
+         * return {number} scroll position
+         */
+        getScrollPosition: function() {
+            return window.scrollY;
+        },
+
+        getPanelHeight: function() {
+            // TODO: rename to getWindowHeight
+            return window.height;
+        },
+
+        getNodeHeight: function() {
+            return 30; // FIXME: get this value from the DOM, or styles?
+        },
+
+        /**
+         * Tree structure (where root node has 10 child nodes):
+         *  {
+         *    root: {
+         *        children: {
+         *            0: {
+         *                children: {...},
+         *                deployed: true,
+         *                label: 'root, 0',
+         *                occluded: false,
+         *                position: 1
+         *            },
+         *            1: {...},
+         *            2: {...},
+         *            ...
+         *            9: {...},
+         *        },
+         *        deployed: true,
+         *        label: 'root, 0'
+         *        occluded: false,
+         *        position: 0
+         *    }
+         *  }
+         */
+        getSubTree: function(tree, treePathA) {
+            var subTree = tree, pathIndex;
+            if (treePathA.length === 0) return tree;
+            pathIndex = treePathA[0];
+            subTree = tree[pathIndex];
+            for (var i = 1; i < treePathA.length; i++) {
+                pathIndex = treePathA[i];
+                subTree = subTree.children;
+                if (!subTree[pathIndex]) {
+                    subTree[pathIndex] = {};
+                    subTree[pathIndex].children = {};
+                }
+                subTree = subTree[pathIndex];
+            }
+            return subTree;
+        },
+
+        getNodeValue: function(tree, treePathA, prop) {
+            var subTree = this.getSubTree(tree, treePathA);
+            return subTree[prop];
+        },
+
+        isNodeOccluded: function(treePathA, nodeIndex, tree, scroll, panelHeight, nodeHeight) {
+            tree = tree || this.nodeTreeState;
+            // FIXME: implement getNodeValue
+            nodeIndex = nodeIndex || this.getNodeValue(tree, treePathA, 'position');
+            scroll = scroll || this.getScrollPosition();
+            panelHeight = panelHeight || this.getPanelHeight();
+            nodeHeight = nodeHeight || this.getNodeHeight();
+            var viewTop = scroll;
+            var viewBottom = viewTop + panelHeight;
+            var nodeTop = nodeIndex * nodeHeight + 1; // position of top of node in px
+            var nodeBottom = nodeTop + nodeHeight - 1; // position of bottom of node in px
+            var isOccluded = viewBottom < nodeTop || nodeBottom < viewTop;
+            return isOccluded;
+        },
+
+        /**
+         * handleScroll(e): scroll event handler
+         * @param {Object} e: scroll event
+         * @return {null}
+         */
+        handleScroll: function(e) {
+            console.log('scroll');
+            console.log(this.getScrollPosition());
+            // During scroll, the tree structure is constant:
+            var nodeTreeState = this.nodeTreeState;
+            var nodesA = this.sequentialNodesA;
+            // ... and the scroll position has changed:
+            // save the old scroll position
+            var oldScrollPosition = this.scrollPosition;
+            // cache the new scroll position
+            this.scrollPosition = this.getScrollPosition();
+            var panelHeight = this.getPanelHeight();
+            var oldSpacerHeights = this.spacerHeights;
+            var nodeHeight = this.getNodeHeight();
+            // Create a closure that updates the occlusion status of the nodes:
+            var updateTree = function(nodesA, oldScrollPosition, newScrollPosition, panelHeight, nodeHeight) {
+                return function(nodeTreeState) {
+                    var subTree, path;
+                    var lastNodeIndex = nodesA.length - 1;
+                    for (var i = 0; i <= lastNodeIndex; i++) {
+                        path = nodesA[i];
+                        subTree = this.getSubTree(nodeTreeState, path);
+                        subTree['occluded'] = this.isNodeOccluded(path, i, nodeTreeState, newScrollPosition, panelHeight, nodeHeight);
+                    }
+                    return nodeTreeState;
+                }.bind(this);
+            }.bind(this);
+            // FIXME: update tree without react immutability lib
+            nodeTreeState = React.addons.update(nodeTreeState, {root: {children: {$apply: updateTree(nodesA, oldScrollPosition, this.scrollPosition, panelHeight, nodeHeight)}}});
+            /*
+            this.setViewportEdgeIndicesA(this.viewportEdgeIndicesA(nodeTreeState, nodesA));
+            // Update the top and bottom spacer heights:
+            var spacerHeights = this.getSpacerHeights(nodeTreeState, nodesA, this.getViewportEdgeIndicesA());
+            if (!spacerHeights || spacerHeights[0] !== oldSpacerHeights[0] || spacerHeights[1] !== oldSpacerHeights[1]) {
+                this.setState({
+                    nodeTreeState: nodeTreeState,
+                    spacerHeights: spacerHeights
+                });
+            }
+            */
         },
 
         attached: function() {

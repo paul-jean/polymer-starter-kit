@@ -5,7 +5,7 @@ href="http://www.polymer-project.org/1.0/samples/components/polymer/polymer.html
 
     <template>
         <li>
-            <p>{{nodeLabel}}</p>
+            <p>{{lazyNodeLabel}}</p>
             <ul id='{{lazyNodeID}}'></ul>
         </li>
     </template>
@@ -19,7 +19,7 @@ href="http://www.polymer-project.org/1.0/samples/components/polymer/polymer.html
         is: 'lazy-node',
 
         properties: {
-            nodeLabel: {
+            lazyNodeLabel: {
                 type: String,
                 value: "DEFAULT"
             },
@@ -38,14 +38,21 @@ href="http://www.polymer-project.org/1.0/samples/components/polymer/polymer.html
             lazyNodeID: {
                 type: String,
                 value: 'root'
+            },
+            isExpanded: {
+                type: Boolean,
+                value: false
             }
         },
 
         factoryImpl: function(level, treePath) {
             this.level = level;
             this.treePath = treePath;
-            this.nodeLabel = this.getNodeLabel(this.treePath);
+            this.lazyNodeLabel = this.getNodeLabel(this.treePath);
             this.lazyNodeID = this.arrayToLabelString(this.treePath, '-');
+            // The default value in props doesn't init this properly ...
+            // in fact it seems to default to the value of the parent's prop?
+            this.childLazyNodes = [];
         },
 
         listeners: {
@@ -53,15 +60,40 @@ href="http://www.polymer-project.org/1.0/samples/components/polymer/polymer.html
         },
 
         handleClick: function (e) {
+            // prevent click event listeners on parent nodes from triggering
             e.stopPropagation();
-            var childLevel = this.level + 1;
-            var childPaths = this.loadChildren(this.treePath);
-            for (var i = 0; i < childPaths.length; i++) {
-                var childPath = childPaths[i];
-                var child = new LazyNode(childLevel, childPath);
-                this.childLazyNodes.push(child);
-                var thisID = this.arrayToLabelString(this.treePath, '-');
-                this.$$('#' + thisID).appendChild(child);
+            var thisID = this.arrayToLabelString(this.treePath, '-');
+            if (!this.isExpanded) {
+                // expand the node
+                if (this.childLazyNodes.length === 0) {
+                    // no child nodes exist, so create and add them
+                    var childLevel = this.level + 1;
+                    // lazy-load children on click, from an API somewhere:
+                    var childPaths = this.loadChildren(this.treePath);
+                    for (var i = 0; i < childPaths.length; i++) {
+                        var childPath = childPaths[i];
+                        var child = new LazyNode(childLevel, childPath);
+                        this.childLazyNodes.push(child);
+                        this.$$('#' + thisID).appendChild(child);
+                    }
+                } else {
+                    // the child nodes were previously created,
+                    // so add them back to the sDOM:
+                    // TODO: recreate nodes instead of holding in memory
+                    this.childLazyNodes.forEach(function(child) {
+                        this.$$('#' + thisID).appendChild(child);
+                    }.bind(this));
+                }
+                // mark this node as expanded
+                this.isExpanded = true;
+            } else {
+                // the node is expanded, so the children must exist
+                // contract the node by removing the children from the sDOM
+                this.childLazyNodes.forEach(function(child) {
+                    this.$$('#' + thisID).removeChild(child);
+                }.bind(this));
+                // mark this node as contracted
+                this.isExpanded = false;
             }
         },
 
